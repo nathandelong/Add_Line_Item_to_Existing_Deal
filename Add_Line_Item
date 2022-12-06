@@ -1,0 +1,49 @@
+const hubspot = require('@hubspot/api-client');
+
+/***** HUGE SHOUTOUT to Diego Pinzon for collaborating on this code! *****/
+/***** Created 12/5/2022 by Diego Pinzon / Nathan De Long @ HubSpot *****/
+/***** NOTE: this custom action is provided as is; please test to ensure it works as desired in your environment before publishing a live workflow! *****/
+
+exports.main = async (event, callback) => {
+
+/***** hstoken represents the name of the secret you are using for this action. *****/  
+  
+  const hubspotClient = new hubspot.Client({
+    accessToken: process.env.hstoken
+  });
+  
+  const properties = {
+    /***** Uncomment the line below to override the product name from your product library if you are using hs_product_id *****/
+    /***** name: "Default ", ****/
+    /***** Use hs_product_id to add a product from your product library to the deal *****/
+    hs_product_id: '1495932709',
+    /***** Enter the quantity of this line item to add below *****/
+    quantity: "1",
+    /***** Uncomment the price below to use the price set for the hs_product_id in your product library *****/
+    /***** price: "500.00" *****/
+  };
+  const SimplePublicObjectInput = { properties };
+
+try {
+  const lineItemResponse = await hubspotClient.crm.lineItems.basicApi.create(SimplePublicObjectInput);
+  console.log("Line Item Created",JSON.stringify(lineItemResponse.body, null, 2));
+  
+  const lineItemId = lineItemResponse.body.id;
+  const toObjectType = "deal";
+  const toObjectId = event.inputFields['hs_object_id'];
+  const associationType = 'line_item_to_deal';
+  
+  const templateAssociateResponse = await hubspotClient
+            .apiRequest({
+              method: 'PUT',
+              path: `/crm/v3/objects/line_items/${lineItemId}/associations/${toObjectType}/${toObjectId}/${associationType}`,
+              body: {}
+            });
+  console.log("Line Item Association Created",JSON.stringify(templateAssociateResponse.body, null, 2));
+  
+} catch (e) {
+  e.message === 'HTTP request failed'
+    ? console.error(JSON.stringify(e.response, null, 2))
+    : console.error(e)
+}
+}
